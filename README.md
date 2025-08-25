@@ -113,5 +113,5 @@ useEffect(() => {
 
 ---
 
-> Próximo paso → [Paso 1: Autenticación](#) — Registro, login, JWT, rutas protegidas
+> Próximo paso → [Paso 1: Autenticación](./doc/roadmap/paso-1.md) — Registro, login, JWT, rutas protegidas
 
