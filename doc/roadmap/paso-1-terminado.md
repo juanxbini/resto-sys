@@ -111,3 +111,58 @@ Authorization: Bearer <token>
 5. Probado con Thunder Client
 
 ---
+
+## 🧭 ¿Cómo funciona el flujo interno?
+
+### Petición protegida: `GET /api/me`
+
+1. El navegador o cliente hace una solicitud:
+
+   ```
+   GET /api/me
+   Authorization: Bearer <token>
+   ```
+
+2. Express redirige esta ruta gracias a:
+
+   ```js
+   app.use(mainRoutes); // En server.js
+   ```
+
+3. En `routes/index.js` se monta:
+
+   ```js
+   router.use('/api', authRoutes);
+   ```
+
+4. En `routes/authRoutes.js` coincide con:
+
+   ```js
+   router.get('/me', authMiddleware, getMe);
+   ```
+
+   * Primero se ejecuta `authMiddleware`
+   * Si todo va bien, se ejecuta `getMe`
+
+5. El middleware `auth.js`:
+
+   * Extrae el token del header
+   * Verifica el token con `jwt.verify()`
+   * Busca el usuario en MongoDB
+   * Lo guarda en `req.user`
+   * Llama a `next()`
+
+6. El controlador `getMe`:
+
+   * Recibe `req` y `res`
+   * Devuelve `req.user` en la respuesta:
+
+     ```js
+     res.status(200).json(req.user);
+     ```
+
+✅ Resultado: el cliente recibe los datos del usuario logueado.
+
+Este patrón (middleware → controlador) se repetirá en todas las rutas protegidas del sistema.
+
+---
