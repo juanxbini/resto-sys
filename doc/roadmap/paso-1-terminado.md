@@ -18,6 +18,9 @@
   - [💡 Estado final del Paso 1](#-estado-final-del-paso-1)
   - [🧭 ¿Cómo funciona el flujo interno?](#-cómo-funciona-el-flujo-interno)
     - [Petición protegida: `GET /api/me`](#petición-protegida-get-apime)
+  - [⏳ Pendientes del Paso 1](#-pendientes-del-paso-1)
+    - [Backend](#backend)
+    - [Frontend (a implementar más adelante)](#frontend-a-implementar-más-adelante)
 
 ---
 
@@ -229,5 +232,38 @@ Authorization: Bearer <token>
 6. `getMe` devuelve `req.user` en la respuesta.
 
 ✅ Resultado: el cliente recibe los datos del usuario logueado.
+
+---
+
+## ⏳ Pendientes del Paso 1
+
+Aunque el backend ya cumple con el alcance principal, faltan tareas menores para cerrar el ciclo completo. A continuación, se detallan los pendientes:
+
+### Backend
+
+* Realizar tests explícitos de casos límite:
+
+  * Registro con email duplicado → debe responder **400**
+  * Acceso a `/api/me` con token inválido → debe responder **401**
+* Incorporar validaciones con **express-validator** en rutas de autenticación:
+
+  * Validar formato de email
+  * Validar longitud mínima de contraseña (ej: 6 caracteres)
+  * Normalizar el email (minúsculas, sin espacios)
+
+### Frontend (a implementar más adelante)
+
+* Formularios de autenticación:
+
+  * Vista `/admin/register`
+  * Vista `/admin/login`
+* Persistencia de sesión:
+
+  * Guardar el token JWT en `localStorage`
+  * Restaurar sesión al recargar la app (consultando `/api/me`)
+* Protección de rutas en React Router:
+
+  * Guard para `/admin/*`
+  * Redirección a `/admin/login` si no hay token válido
 
 ---
