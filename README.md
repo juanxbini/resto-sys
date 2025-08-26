@@ -152,5 +152,5 @@ useEffect(() => {
 ## ➡️ Enlaces a Roadmaps / Documentación
 
 * 📄 [Roadmap Paso 0: Preparación](./doc/roadmap/paso-0.md)
-* 📄 [Roadmap Paso 1: Autenticación](./doc/roadmap/paso-1-terminado.md)
+* 📄 [Paso 1: Autenticación detallado](./doc/roadmap/paso-1-terminado.md)
 * ⏭️ [Siguiente paso: Paso 2 - Gestión de Sucursales](./doc/roadmap/paso-2.md)
