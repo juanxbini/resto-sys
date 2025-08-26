@@ -1,5 +1,27 @@
 # Paso 1 - Autenticación (Backend)
 
+## 📚 Índice
+
+- [Paso 1 - Autenticación (Backend)](#paso-1---autenticación-backend)
+  - [📚 Índice](#-índice)
+  - [🌟 Objetivo](#-objetivo)
+  - [🔹 Tecnologías utilizadas](#-tecnologías-utilizadas)
+  - [📂 Estructura creada](#-estructura-creada)
+  - [📅 Descripción de los archivos](#-descripción-de-los-archivos)
+    - [`models/User.js`](#modelsuserjs)
+    - [`controllers/authController.js`](#controllersauthcontrollerjs)
+      - [`registerUser`](#registeruser)
+      - [`loginUser`](#loginuser)
+      - [`getMe`](#getme)
+    - [`middleware/auth.js`](#middlewareauthjs)
+    - [`routes/authRoutes.js`](#routesauthroutesjs)
+  - [🚪 Endpoint protegido](#-endpoint-protegido)
+  - [💡 Estado final del Paso 1](#-estado-final-del-paso-1)
+  - [🧭 ¿Cómo funciona el flujo interno?](#-cómo-funciona-el-flujo-interno)
+    - [Petición protegida: `GET /api/me`](#petición-protegida-get-apime)
+
+---
+
 ## 🌟 Objetivo
 
 Implementar el sistema de autenticación para empresas (usuarios administradores):
@@ -55,40 +77,124 @@ Esquema del usuario administrador:
 
 #### `registerUser`
 
-* Verifica que el email no esté en uso
-* Hashea la contraseña
-* Crea el usuario
-* Devuelve un JWT
+Flujo del registro de usuario:
+
+1. El cliente envía `POST /api/register` con email, password y nombre de empresa.
+2. La ruta `authRoutes.js` redirige la petición a `registerUser`.
+3. `registerUser`:
+
+   * Verifica si el email ya existe en la DB.
+   * Si existe → responde `400 Bad Request`.
+   * Si no existe → hashea la contraseña con bcrypt.
+   * Crea y guarda el usuario en MongoDB.
+   * Genera un **JWT** con el `_id` del usuario.
+   * Responde `201 Created` con `{ token }`.
+
+Código simplificado:
+
+```js
+const registerUser = async (req, res) => {
+  const { email, password, nombre_empresa, logo } = req.body;
+  const existeUsuario = await User.findOne({ email });
+  if (existeUsuario) return res.status(400).json({ msg: 'El email ya está registrado' });
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+  const nuevoUsuario = new User({ email, password: hashedPassword, nombre_empresa, logo });
+  await nuevoUsuario.save();
+
+  const token = jwt.sign({ id: nuevoUsuario._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+  res.status(201).json({ token });
+};
+```
+
+---
 
 #### `loginUser`
 
-* Verifica que el email exista
-* Compara la contraseña con bcrypt
-* Devuelve un JWT si es válida
+Flujo del login de usuario:
+
+1. El cliente envía `POST /api/login` con email y password.
+2. La ruta `authRoutes.js` redirige la petición a `loginUser`.
+3. `loginUser`:
+
+   * Busca el usuario en MongoDB por email.
+   * Si no existe → responde `401 Unauthorized`.
+   * Si existe → compara la contraseña con bcrypt.
+   * Si no coincide → responde `401 Unauthorized`.
+   * Si coincide → genera un **JWT** con el `_id` del usuario.
+   * Responde `200 OK` con `{ token }`.
+
+Código simplificado:
+
+```js
+const loginUser = async (req, res) => {
+  const { email, password } = req.body;
+  const usuario = await User.findOne({ email });
+  if (!usuario) return res.status(401).json({ msg: 'Credenciales inválidas' });
+
+  const passwordValida = await bcrypt.compare(password, usuario.password);
+  if (!passwordValida) return res.status(401).json({ msg: 'Credenciales inválidas' });
+
+  const token = jwt.sign({ id: usuario._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+  res.status(200).json({ token });
+};
+```
+
+---
 
 #### `getMe`
 
-* Protegido por token JWT
-* Devuelve datos del usuario actual
+* Protegido por el middleware JWT.
+* Devuelve los datos del usuario logueado en base al token válido.
+
+```js
+const getMe = (req, res) => {
+  res.status(200).json(req.user);
+};
+```
 
 ---
 
 ### `middleware/auth.js`
 
-* Valida que se incluya `Authorization: Bearer <token>`
-* Verifica el token
-* Busca el usuario
-* Lo inyecta en `req.user`
+* Intercepta rutas protegidas.
+* Extrae el token de los headers.
+* Verifica el token con `jwt.verify()`.
+* Busca al usuario en DB.
+* Inyecta el usuario en `req.user`.
+* Si el token es inválido → responde `401 Unauthorized`.
+
+```js
+const authMiddleware = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer '))
+    return res.status(401).json({ msg: 'Token no proporcionado' });
+
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select('-password');
+    if (!user) return res.status(404).json({ msg: 'Usuario no encontrado' });
+
+    req.user = user;
+    next();
+  } catch (error) {
+    return res.status(401).json({ msg: 'Token inválido o expirado' });
+  }
+};
+```
 
 ---
 
 ### `routes/authRoutes.js`
 
-Rutas disponibles:
+Define las rutas de autenticación:
 
-* `POST /api/register` → Registro
-* `POST /api/login` → Login
-* `GET /api/me` → Obtener datos del usuario autenticado
+```js
+router.post('/register', registerUser);
+router.post('/login', loginUser);
+router.get('/me', authMiddleware, getMe);
+```
 
 ---
 
@@ -116,53 +222,13 @@ Authorization: Bearer <token>
 
 ### Petición protegida: `GET /api/me`
 
-1. El navegador o cliente hace una solicitud:
-
-   ```
-   GET /api/me
-   Authorization: Bearer <token>
-   ```
-
-2. Express redirige esta ruta gracias a:
-
-   ```js
-   app.use(mainRoutes); // En server.js
-   ```
-
-3. En `routes/index.js` se monta:
-
-   ```js
-   router.use('/api', authRoutes);
-   ```
-
-4. En `routes/authRoutes.js` coincide con:
-
-   ```js
-   router.get('/me', authMiddleware, getMe);
-   ```
-
-   * Primero se ejecuta `authMiddleware`
-   * Si todo va bien, se ejecuta `getMe`
-
-5. El middleware `auth.js`:
-
-   * Extrae el token del header
-   * Verifica el token con `jwt.verify()`
-   * Busca el usuario en MongoDB
-   * Lo guarda en `req.user`
-   * Llama a `next()`
-
-6. El controlador `getMe`:
-
-   * Recibe `req` y `res`
-   * Devuelve `req.user` en la respuesta:
-
-     ```js
-     res.status(200).json(req.user);
-     ```
+1. El cliente hace la solicitud con `Authorization: Bearer <token>`.
+2. Express reenvía la petición a `authRoutes.js`.
+3. La ruta coincide con `router.get('/me', authMiddleware, getMe);`.
+4. `authMiddleware` verifica el token y busca el usuario.
+5. Si es válido → `req.user` queda disponible.
+6. `getMe` devuelve `req.user` en la respuesta.
 
 ✅ Resultado: el cliente recibe los datos del usuario logueado.
-
-Este patrón (middleware → controlador) se repetirá en todas las rutas protegidas del sistema.
 
 ---
