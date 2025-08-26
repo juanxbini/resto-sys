@@ -2,8 +2,7 @@
 
 ## 📚 Índice
 
-- [Paso 1 - Autenticación (Backend)](#paso-1---autenticación-backend)
-  - [📚 Índice](#-índice)
+- Paso 1 - Autenticación (Backend)
   - [🌟 Objetivo](#-objetivo)
   - [🔹 Tecnologías utilizadas](#-tecnologías-utilizadas)
   - [📂 Estructura creada](#-estructura-creada)
